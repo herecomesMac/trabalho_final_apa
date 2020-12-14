@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apapde/fim.dart';
 import 'package:apapde/regions.dart';
 import 'package:flutter/material.dart';
@@ -30,14 +31,31 @@ class _ComecoState extends ResumableState<Comeco> {
   bool acabou;
   bool continua = true;
   int pausedTime = 3600;
+  
+  Stream<Row> timerStream;
+  StreamSubscription<Row> timerSubscription;
 
+
+  /* Stream<Row> pauseStream() {
+    StreamController<Row> streamController;
+    }
+
+    streamController = StreamController<int>(
+      onListen: startTimer,
+      onCancel: stopTimer,
+      onResume: startTimer,
+      onPause: stopTimer,
+    );
+
+    return streamController.stream;
+  } */
 
   @override
   void onPause() {
     setState(() {
       continua = false;
     });
-    print('HomeScreen is paused!');
+    
   }
 
   @override
@@ -46,7 +64,7 @@ class _ComecoState extends ResumableState<Comeco> {
     setState(() {
       continua = true;
     });
-    print('HomeScreen is resumed!');
+
   }
 
   @override
@@ -65,7 +83,8 @@ class _ComecoState extends ResumableState<Comeco> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: 
+      Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.max,
@@ -115,8 +134,9 @@ class _ComecoState extends ResumableState<Comeco> {
                           ),
                           child: Center(
                             child: GestureDetector(child: Text("PAUSAR"),onTap: (){
-                              sleep(Duration(seconds: 5));
-                              onPause();
+                              setState(() {
+                                continua = false;
+                              });
                             },)
                           ),
                         ) :  Container(
@@ -134,7 +154,9 @@ class _ComecoState extends ResumableState<Comeco> {
                           ),
                           child: Center(
                             child: GestureDetector(child: Text("CONTINUAR"),onTap: (){
-                              onResume();
+                              setState(() {
+                                continua = true;
+                              });
                             },)
                           ),
                       ),
@@ -226,9 +248,7 @@ class _ComecoState extends ResumableState<Comeco> {
     double resultado2;
     String firstWay;
     String secondWay;
-    print(avarages.length);
     if(avarages.length < widget.regions.length){
-      print("NÃO VOU PELO AVARAGE");
       resultado1 =  widget.regions[regionAtual-1].roleta_1.prob_1 *  
                     widget.regions[regionAtual-1].roleta_1.lucro_1 + 
                     widget.regions[regionAtual-1].roleta_1.prob_2*   
@@ -248,16 +268,11 @@ class _ComecoState extends ResumableState<Comeco> {
                     (widget.regions[regionAtual-1].roleta_2.prob_2).toString() + " * " +  
                     (widget.regions[regionAtual-1].roleta_2.lucro_2).toString() + " = " + resultado2.toString();
     }else{
-      print("VOU PELO AVARAGE");
-      print({avarages[0].lucro});
-      print(avarages[1].lucro);
-      print(avarages[2].lucro);
+
       int myLastAvarageIndex = avarages.indexWhere((element) => (element.round == (rodadaAtual+1) && (element.name == widget.regions[(regionAtual-1).abs()].name)));
       int lastAvarage1Index = avarages.indexWhere((element) => (element.round == (rodadaAtual+1) && (element.name == widget.regions[(regionAtual-1).abs()].roleta_1.goTo_2)));
       int lastAvarage2Index = avarages.indexWhere((element) => (element.round == (rodadaAtual+1) && (element.name == widget.regions[(regionAtual-1).abs()].roleta_2.goTo_2)));
-      print(myLastAvarageIndex);
-      print(lastAvarage1Index);
-      print(lastAvarage2Index);
+
       double lucroAnterior1 = avarages[lastAvarage1Index].lucro;
       double lucroAnterior2 = avarages[lastAvarage2Index].lucro;
       double lucroAnteriorMine = avarages[myLastAvarageIndex].lucro;
@@ -281,14 +296,13 @@ class _ComecoState extends ResumableState<Comeco> {
                     "(" + (lucroAnterior2).toString() + " + " + widget.regions[regionAtual-1].roleta_2.lucro_2.toString() + ")  = " + resultado2.toString();
     }
     setState(() {
-      print("ATUALIZANDO O AVARAGES E IS BIGGER");
       if(resultado1 > resultado2){    
         widget.graphs[regionAtual-1].edges[0].paint = Paint()..color=Colors.green[900]..strokeWidth=5;
-        avarages.add(SaveAvarage(lucro: resultado1, round: rodadaAtual, name: widget.regions[regionAtual-1].name));
+        (continua) ? avarages.add(SaveAvarage(lucro: resultado1, round: rodadaAtual, name: widget.regions[regionAtual-1].name)) : null;
         isBigger1 = true;
       }else{
         widget.graphs[regionAtual-1].edges[1].paint = Paint()..color=Colors.green[900]..strokeWidth=5;
-        avarages.add(SaveAvarage(lucro: resultado2, round: rodadaAtual, name: widget.regions[regionAtual-1].name));
+        (continua) ? avarages.add(SaveAvarage(lucro: resultado2, round: rodadaAtual, name: widget.regions[regionAtual-1].name)) : null;
         isBigger2 = true;
       }
     }); 
@@ -323,12 +337,13 @@ class _ComecoState extends ResumableState<Comeco> {
         SizedBox(height: 10,),
       ],
     );
-    
-    _updateValues(resultado1, resultado2);
+    print("*************************");
+    print(continua);
+    print("*************************");
+    (continua) ? _updateValues(resultado1, resultado2) : null;
     return retorno;
   }
   _eraseAll(){
-
       setState(() {
         widget.graphs[regionAtual-1].edges[0].paint = Paint()..color=Colors.red..strokeWidth=1;
         widget.graphs[regionAtual-1].edges[1].paint = Paint()..color=Colors.red..strokeWidth=1;
@@ -340,24 +355,15 @@ class _ComecoState extends ResumableState<Comeco> {
 
   _updateValues(double one, double two) async {
     await Future.delayed(const Duration(seconds:7), (){
-    print("Hey");
      setState((){
        if(one > two){
-          print("*************************");
-          print(widget.regions[regionAtual-1].roleta_1.name);
           lista.add(widget.regions[regionAtual-1].roleta_1.name);
         }else{
-          print("*************************");
-          print(widget.regions[regionAtual-1].roleta_2.name);
           lista.add(widget.regions[regionAtual-1].roleta_2.name);
         }
           if(regionAtual+1 <= widget.regions.length){
-            print("PRÓXIMA REGIÃO");
-            print(regionAtual+1);
             regionAtual += 1;
           }else if(rodadaAtual > 1){
-            print("PRÓXIMA RODADA");
-            print(rodadaAtual-1);
             solutions.add(Text("{$lista}"));
             regionAtual = 1;
             rodadaAtual -= 1;
@@ -365,7 +371,6 @@ class _ComecoState extends ResumableState<Comeco> {
             lista.clear();
           }else{
             solutions.add(Text("{$lista}"));
-            print("ACABOU");
             acabou = true;
           }
         if(one > two){
@@ -374,14 +379,13 @@ class _ComecoState extends ResumableState<Comeco> {
           isBigger2 = true;
         }         
         if(acabou){
-          sleep(Duration(seconds: 3));
+          sleep(Duration(seconds: 1));
            Navigator.pop(context);
            Navigator.push(context, 
               MaterialPageRoute(builder: (context) => 
                 Final(solutions: solutions,),
               )
             ); 
-            print("acabou");
         }
         _eraseAll();
         });
